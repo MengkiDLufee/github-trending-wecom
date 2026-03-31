@@ -1,0 +1,54 @@
+name: GitHub Trending 推送企业微信
+on:
+  schedule:
+    - cron: '0 8 * * *'  # UTC 8点 = 北京时间16点，可自行修改
+  workflow_dispatch:     # 支持手动触发测试
+
+jobs:
+  send-trending:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+
+      - name: 安装依赖
+        run: pip install requests
+
+      - name: 执行推送
+        env:
+          WEBHOOK_URL: ${{ secrets.WECOM_WEBHOOK }}
+        run: |
+          cat > main.py << 'EOF'
+          import requests, os
+
+          # ========== 自定义配置 ==========
+          SINCE = "weekly"     # daily/weekly/monthly
+          LANGUAGE = "typescript"       # 指定语言：python/java，空=全部
+          LIMIT = 10          # 推送条数
+          # ==============================
+
+          def get_trending():
+              url = f"https://api.github-trending.top/repositories?since={SINCE}"
+              if LANGUAGE: url += f"&language={LANGUAGE}"
+              try:
+                  return requests.get(url, timeout=10).json()
+              except:
+                  return None
+
+          def build_msg(data):
+              if not data: return "❌ 今日 Trending 数据获取失败"
+              content = ["# 🔥 GitHub 每日热门仓库"]
+              for idx, r in enumerate(data[:LIMIT],1):
+                  content.append(f"{idx}. **[{r['name']}]({r['url']})**\n   👤{r['author']} | 🔤{r['language']} | ⭐{r['stars']}\n   📝{r['description']}\n")
+              return "\n".join(content)
+
+          def send():
+              msg = build_msg(get_trending())
+              requests.post(os.getenv("WEBHOOK_URL"), json={
+                  "msgtype": "markdown", "markdown": {"content": msg}
+              })
+
+          if __name__ == "__main__": send()
+          EOF
+          python main.py
