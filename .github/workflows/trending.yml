@@ -75,20 +75,28 @@ jobs:
                           repo["author"] = repo_name.split("/")[0]
                       
                       # 解析描述
-                      desc_tag = card.find("p", class_="col-9 color-fg-muted my-1 pr-4")
+                      desc_tag = card.find("p", class_="col-9 color-fg-muted my-1 tmp-pr-4")
                       repo["description"] = desc_tag.get_text(strip=True) if desc_tag else "无描述"
                       
                       # 解析编程语言
-                      lang_tag = card.find("span", class_="d-inline-block ml-0 mr-3")
+                      lang_tag = card.find("span", itemprop="programmingLanguage")
                       repo["language"] = lang_tag.get_text(strip=True) if lang_tag else "未知语言"
                       
                       # 解析Stars数
-                      star_tag = card.find("a", class_="Link--muted d-inline-block mr-3")
+                      star_tag = card.find("a", href=lambda x: x and "stargazers" in x)
                       if star_tag:
                           star_text = star_tag.get_text(strip=True).replace(",", "")
                           repo["stars"] = int(star_text) if star_text.isdigit() else 0
                       else:
                           repo["stars"] = 0
+                      
+                      # 解析Forks数
+                      fork_tag = card.find("a", href=lambda x: x and "forks" in x)
+                      if fork_tag:
+                          fork_text = fork_tag.get_text(strip=True).replace(",", "")
+                          repo["forks"] = int(fork_text) if fork_text.isdigit() else 0
+                      else:
+                          repo["forks"] = 0
                       
                       repos.append(repo)
                   
